@@ -48,14 +48,13 @@ function Queue() {
     };
 
     this.returnCall = function(err, id){
-        //console.log('Error: '+err);
         if(err && !(err instanceof Error)) {
             throw new Error('Non-error error returned from worker.');
         }
         if(err && err instanceof Error) {
             // There was an error.  Log it, and add it back to the front of the queue.
             self.queue.unshift(self.progress.get(id));
-            self.emit('status', 'Worker failed.  Returning task to front of queue.');
+            self.emit('status', 'Worker failed.  Returning task to front of queue.  Error message: ' + err.message);
         }
         self.progress.delete(id);
         self.emit('task-complete', id);
@@ -133,7 +132,7 @@ Queue.prototype.resume = function() {
  */
 Queue.prototype.clear = function() {
     this.emit('clearing');
-    this.queue.clear();
+    this.queue.length = 0;
     this.emit('cleared');
 };
 
