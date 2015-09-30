@@ -11,6 +11,21 @@
     "events",
     "concurrency"
   ],
-  "author": "Westin Pigott",
+  "repository" : {
+    "type" : "git"
+  , "url" : "https://github.com/PigottConsulting/robust-queue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PigottConsulting/robust-queue/issues"
+  },
+  "dependencies" : {
+    "util": "0.10.13",
+    "eventemitter3": ">=1.0.0"
+  },
+  "author": {
+    "name": "Westin Pigott",
+    "email": "wpigott@pigott.consulting",
+    "url": "https://pigott.consulting"
+  },
   "license": "ISC"
 }
