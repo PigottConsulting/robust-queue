@@ -1,6 +1,6 @@
 {
   "name": "robust-queue",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A queue focused on simple use and performance.  Emits events, enables pause/resume, and has configurable concurrency.",
   "main": "index.js",
   "scripts": {

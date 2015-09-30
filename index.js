@@ -8,13 +8,13 @@ var EventEmitter = require('eventemitter3');
 
 function Queue() {
     var self = this;
-    this.concurrency = 1;
-    this.worker = null;
-    this.hasWorker = false;
-    this.queue = [];
-    this.progress = new Map();
-    this.paused = true;
-    this.increment = 0;
+    var concurrency = 1;
+    var worker = null;
+    var hasWorker = false;
+    var queue = [];
+    var progress = new Map();
+    var paused = true;
+    var increment = 0;
 
     //--- Handle Error if no listener ---//
     this.on('error', function(err) {
@@ -23,117 +23,120 @@ function Queue() {
         }
     });
 
-    //--- Internal methods ---//
+    //--- Private methods ---//
 
-    this.run = function() {
-        var workersToStart = Math.min(self.queue.length, Math.max(self.concurrency - self.progress.size, 0));
+    function run() {
+        var workersToStart = Math.min(queue.length, Math.max(concurrency - progress.size, 0));
         for(var i = 0; i <= workersToStart; i++) {
-            self.go();
+            go();
         }
     }
 
-    this.go = function() {
-        if(!self.paused) {
-            if(!self.hasWorker) {
+    function go() {
+        if(!paused) {
+            if(!hasWorker) {
                 self.emit('status', 'There is no worker.  Reverting to paused.');
                 self.pause();
             } else {
-                var task = self.queue.shift();
+                var task = queue.shift();
                 if(typeof task !== "undefined") {
-                    self.progress.set(task.id, task);
-                    setTimeout(self.worker(task.message, task.id, self.returnCall),0);
+                    progress.set(task.id, task);
+                    setTimeout(worker(task.message, task.id, returnCall),0);
                 }
             }
         }
     };
 
-    this.returnCall = function(err, id){
+    function returnCall(err, id){
         if(err && !(err instanceof Error)) {
             throw new Error('Non-error error returned from worker.');
         }
         if(err && err instanceof Error) {
             // There was an error.  Log it, and add it back to the front of the queue.
-            self.queue.unshift(self.progress.get(id));
+            queue.unshift(progress.get(id));
             self.emit('status', 'Worker failed.  Returning task to front of queue.  Error message: ' + err.message);
         }
-        self.progress.delete(id);
+        progress.delete(id);
         self.emit('task-complete', id);
     };
 
-    this.nextIncrement = function() {
-        return self.increment++;
+    function nextIncrement() {
+        return increment++;
+    };
+
+    //--- Privileged Methods ---//
+
+    /**
+     * Sets the worker which should be working on the queue.  Worker will be called with the following
+     * arguments: task data, task id, callback.  Callback is expecting: error, task id.
+     * @param worker function
+     */
+    this.setWorker = function(tempWorker) {
+        if (typeof tempWorker === 'function') {
+            worker = tempWorker;
+            hasWorker = true;
+            self.emit('new-worker', worker);
+        } else {
+            self.emit('error', new Error('Worker must be a valid function.'));
+        }
+    };
+
+    /**
+     *
+     * @param concurrency number Integer for number of workers to operate in parallel.  Default is 1.
+     */
+    this.setConcurrency = function(tempConcurrency) {
+        if(typeof tempConcurrency === 'number' && (tempConcurrency%1)===0) {
+            concurrency = tempConcurrency;
+            self.emit('concurrency-change', concurrency);
+        } else {
+            self.emit('error', new Error('Invalid integer provided for concurrency.'));
+        }
+    }
+
+    /**
+     * Add a message to the queue.
+     * @param message data to be passed to the worker.
+     */
+    this.add = function(message) {
+        queue.push({
+            message: message,
+            id: nextIncrement()
+        });
+        setTimeout(run(),0);
+    };
+
+    /**
+     * Pause the processing of the queue.  Will not call any new workers, but will allow existing workers to complete.
+     */
+    this.pause = function() {
+        if(paused === false) {
+            paused = true;
+            self.emit('pause');
+        }
+    };
+
+    /**
+     * Resume processing of the queue.
+     */
+    this.resume = function() {
+        if (paused === true) {
+            paused = false;
+            self.emit('resume');
+            setTimeout(run(), 0);
+        }
+    };
+
+    /**
+     * Empty the queue.
+     */
+    this.clear = function() {
+        this.emit('clearing');
+        queue.length = 0;
+        this.emit('cleared');
     };
 }
+
 util.inherits(Queue, EventEmitter);
-
-/**
- * Sets the worker which should be working on the queue.  Worker will be called with the following
- * arguments: task data, task id, callback.  Callback is expecting: error, task id.
- * @param worker function
- */
-Queue.prototype.setWorker = function(worker) {
-    if (typeof worker === 'function') {
-        this.worker = worker;
-        this.hasWorker = true;
-        this.emit('new-worker', worker);
-    } else {
-        this.emit('error', new Error('Worker must be a valid function.'));
-    }
-};
-
-/**
- *
- * @param concurrency number Integer for number of workers to operate in parallel.  Default is 1.
- */
-Queue.prototype.setConcurrency = function(concurrency) {
-    if(typeof concurrency === 'number' && (concurrency%1)===0) {
-        this.concurrency = concurrency;
-        this.emit('concurrency-change', concurrency);
-    } else {
-        this.emit('error', new Error('Invalid integer provided for concurrency.'));
-    }
-}
-
-/**
- * Add a message to the queue.
- * @param message data to be passed to the worker.
- */
-Queue.prototype.add = function(message) {
-    this.queue.push({
-        message: message,
-        id: this.nextIncrement()
-    });
-    setTimeout(this.run(),0);
-};
-
-/**
- * Pause the processing of the queue.  Will not call any new workers, but will allow existing workers to complete.
- */
-Queue.prototype.pause = function() {
-    if(this.paused === false) {
-        this.paused = true;
-        this.emit('pause');
-    }
-};
-
-/**
- * Resume processing of the queue.
- */
-Queue.prototype.resume = function() {
-    if (this.paused === true) {
-        this.paused = false;
-        this.emit('resume');
-        setTimeout(this.run(), 0);
-    }
-};
-
-/**
- * Empty the queue.
- */
-Queue.prototype.clear = function() {
-    this.emit('clearing');
-    this.queue.length = 0;
-    this.emit('cleared');
-};
 
 module.exports = Queue;
