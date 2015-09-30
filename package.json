@@ -1,6 +1,6 @@
 {
   "name": "robust-queue",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "A queue focused on simple use and performance.  Emits events, enables pause/resume, and has configurable concurrency.",
   "main": "index.js",
   "scripts": {
@@ -19,7 +19,7 @@
     "url": "https://github.com/PigottConsulting/robust-queue/issues"
   },
   "dependencies" : {
-    "util": "0.10.13",
+    "util": ">=0.10.3",
     "eventemitter3": ">=1.0.0"
   },
   "author": {
