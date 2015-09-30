@@ -1,0 +1,16 @@
+{
+  "name": "robust-queue",
+  "version": "1.0.0",
+  "description": "A queue focused on simple use and performance.  Emits events, enables pause/resume, and has configurable concurrency.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "queue",
+    "events",
+    "concurrency"
+  ],
+  "author": "Westin Pigott",
+  "license": "ISC"
+}
