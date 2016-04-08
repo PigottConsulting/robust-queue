@@ -7,8 +7,9 @@ Robust queue is a queue which is disgned from the ground up to meet the followin
 * Emits Events
 * Configurable Worker and Concurrency
 * Allows workers to be paused and resumed.
+* Allows jobs to be grouped.  IE.  Only start a worker when there are 10 tasks in queue, and send all of them to a single worker.
 
-This has been tried with 1,200+ messages per second flowing through it.  The queue can be paused and a backlog of 50,000+ messages accumulated without issue.  I have not tested more than this, but there is no reason to think it will fail until you run out of memory to store the backlog in.
+This has been tried with 1,200+ messages per second flowing through it in single concurreny.  With concurrency of 100, it will easily handle 5,000+/sec.  The queue can be paused and a backlog of 50,000+ messages accumulated without issue.  I have not tested more than this, but there is no reason to think it will fail until you run out of memory to store the backlog in.
 
 ## Quick Start
 To use, simply start a new queue, give it a worker function, un-pause, and start adding tasks.
@@ -48,7 +49,7 @@ The callback method takes two arguments, bot of which are required.
 1. Error - null if there is no error.  On an error, an object of type Error should be returned.
 2. Id - The id that was passed into the worker function.
 
-### Worker succeeds example
+### Worker succeeds example (no grouping)
 The worker function calls the callback with no error, and the id of the task so it can be marked complete and purged from the queue.
 ```
 function worker(task, id, cb) {
@@ -57,7 +58,7 @@ function worker(task, id, cb) {
 }
 ```
 
-### Worker fails example
+### Worker fails example (no grouping)
 When a worker fails to complete a task, it must return an Error object, and the id.  The task will then be put on the front of the queue and retried.
 ```
 function worker(task, id, cb) {
@@ -65,6 +66,33 @@ function worker(task, id, cb) {
     cb( new Error('Failed'), id);
 }
 ```
+
+### Worker succeeds example (with grouping)
+The worker function takes a Map object of id:task.  The 2nd argument is undefined.  The worker function calls the callback for each task with no error, and the id of the task so it can be marked complete and purged from the queue.
+```
+function worker(tasks, undef, cb) {
+    tasks.forEach(function(value, key, map){
+        // Do something
+        cb(null, key);
+    });
+}
+```
+
+### Worker fails example (with grouping)
+When a worker fails to complete a task, it must call the callback with an Error object, and the id for each task that failed.  The task will then be put on the front of the queue and retried.
+```
+function worker(tasks, undef, cb) {
+    tasks.forEach(function(value, key, map){
+        // Fail to do something
+        cb( new Error('Failed'), key);
+    });
+}
+```
+
+## Grouping
+Grouping allows tasks to be grouped and sent to a single worker.  IE.  A worker will receive 5 tasks instead of 1 if the grouping is enabled and a grouping number of 5 is set.
+
+You should remember to flush the queue at the end if it is a short living queue, as tasks could be piled up waiting for the minimum number of tasks to accumulate before sendin a group to a worker.  Flushing will group all outstanding tasks and send them to a single worker.
 
 ## Methods
 ### setWorker(worker)
@@ -85,6 +113,15 @@ Resumes the queue processor.
 
 ### clear()
 Clears the entirety of the queue.  Any tasks in progress are not removed.
+
+### setGroupingNum(num)
+Sets the number of tasks to group and pass to a single worker.
+
+### setGroupingIsEnabled(bool)
+Enables or disables the grouping functionality.
+
+### flush()
+Forces all outstanding tasks to be sent to a single worker.  This is only applicable if grouping is enabled.  This should be used when ending a queue to make sure all tasks are processed.  The queue must not be paused when this is called.  Once in the flush state, a queue cannot be returned to normal.
 
 ## Events
 ### status
