@@ -123,6 +123,9 @@ Enables or disables the grouping functionality.
 ### flush()
 Forces all outstanding tasks to be sent to a single worker.  This is only applicable if grouping is enabled.  This should be used when ending a queue to make sure all tasks are processed.  The queue must not be paused when this is called.  Once in the flush state, a queue cannot be returned to normal.
 
+### getQueueStats(callback)
+Calls the callback with some stats about the queue.  Ex.  ```function(stats){}```
+
 ## Events
 ### status
 Emits a string explaining what is going on in the queue.  Useful for logging.  Status is emitted when a worker fails and the task is returned to the queue.

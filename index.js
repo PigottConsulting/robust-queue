@@ -46,7 +46,7 @@ function Queue() {
                     var task = queue.shift();
                     if(typeof task !== "undefined") {
                         progress.set(task.id, task);
-                        setTimeout(worker(task.message, task.id, returnCall),0);
+                        setTimeout(function(){worker(task.message, task.id, returnCall)},0);
                     }                
                 } else if ((flushing) || (queue.length >= grouping)) {
 
@@ -57,10 +57,9 @@ function Queue() {
                             progress.set(task.id, task);
                             tasks.set(task.id, task.message);
                         }
-
                     }
                     if (tasks.size > 0) {
-                        setTimeout(worker(tasks, undefined, returnCall), 0);
+                        setTimeout(function(){worker(tasks, undefined, returnCall)}, 0);
                     }
                 }
             }
@@ -186,11 +185,23 @@ function Queue() {
         }
     }
 
+    /**
+     * Switches queue state to flushing mode.  All remaining tasks will be sent to workers regardless of group size.
+     */
     this.flush = function() {
         flushing = true;
     }
 
-
+    /**
+     * Sends some stats about the queue to the callback method provided.  function(stats){}
+     * @param callback
+     */
+    this.getQueueStats = function(callback) {
+        setTimeout(function(){callback({
+            inProgress: progress.size,
+            inQueue: queue.length
+        })});
+    }
 }
 
 util.inherits(Queue, EventEmitter);
