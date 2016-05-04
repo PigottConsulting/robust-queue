@@ -21,8 +21,8 @@ function Queue() {
     var flushing = false;
 
     //--- Handle Error if no listener ---//
-    this.on('error', function(err) {
-        if(self.listeners('error').length <= 1) {
+    this.on('error', function (err) {
+        if (self.listeners('error').length <= 1) {
             throw err;
         }
     });
@@ -31,48 +31,58 @@ function Queue() {
 
     function run() {
         var workersToStart = Math.min(queue.length, Math.max(concurrency - progress.size, 0));
-        for(var i = 0; i <= workersToStart; i++) {
+        for (var i = 0; i <= workersToStart; i++) {
             go();
         }
     }
 
     function go() {
-        if(!paused) {
-            if(!hasWorker) {
+        if (!paused) {
+            // Make sure there is a worker
+            if (!hasWorker) {
                 self.emit('status', 'There is no worker.  Reverting to paused.');
                 self.pause();
-            } else {
-                if(groupingEnabled === false) {
-                    var task = queue.shift();
-                    if(typeof task !== "undefined") {
-                        progress.set(task.id, task);
-                        setTimeout(function(){worker(task.message, task.id, returnCall)},0);
-                    }                
-                } else if ((flushing) || (queue.length >= grouping)) {
+                return;
+            }
+            // Make sure we are not lanuching more than we should
+            if(progress.size >= concurrency) {
+                self.emit('status', 'Trying to launch more workers than allowed.');
+                return;
+            }
+            if (groupingEnabled === false) {
+                var task = queue.shift();
+                if (typeof task !== "undefined") {
+                    progress.set(task.id, task);
+                    setTimeout(function () {
+                        worker(task.message, task.id, returnCall)
+                    }, 0);
+                }
+            } else if ((flushing) || (queue.length >= grouping)) {
 
-                    var tasks = new Map();
-                    for (var i = 0; i < grouping; i++) {
-                        var task = queue.shift();
-                        if (typeof task !== "undefined") {
-                            progress.set(task.id, task);
-                            tasks.set(task.id, task.message);
-                        }
-                    }
-                    if (tasks.size > 0) {
-                        setTimeout(function(){worker(tasks, undefined, returnCall)}, 0);
+                var tasks = new Map();
+                for (var i = 0; i < grouping; i++) {
+                    var task = queue.shift();
+                    if (typeof task !== "undefined") {
+                        progress.set(task.id, task);
+                        tasks.set(task.id, task.message);
                     }
                 }
+                if (tasks.size > 0) {
+                    setTimeout(function () {
+                        worker(tasks, undefined, returnCall)
+                    }, 0);
+                }
             }
+
         }
     }
-    
-    
 
-    function returnCall(err, id){
-        if(err && !(err instanceof Error)) {
+
+    function returnCall(err, id) {
+        if (err && !(err instanceof Error)) {
             throw new Error('Non-error error returned from worker.');
         }
-        if(err && err instanceof Error) {
+        if (err && err instanceof Error) {
             // There was an error.  Log it, and add it back to the front of the queue.
             queue.unshift(progress.get(id));
             self.emit('status', 'Worker failed.  Returning task to front of queue.  Error message: ' + err.message);
@@ -92,7 +102,7 @@ function Queue() {
      * arguments: task data, task id, callback.  Callback is expecting: error, task id.
      * @param worker function
      */
-    this.setWorker = function(tempWorker) {
+    this.setWorker = function (tempWorker) {
         if (typeof tempWorker === 'function') {
             worker = tempWorker;
             hasWorker = true;
@@ -106,8 +116,8 @@ function Queue() {
      *
      * @param concurrency number Integer for number of workers to operate in parallel.  Default is 1.
      */
-    this.setConcurrency = function(tempConcurrency) {
-        if(typeof tempConcurrency === 'number' && (tempConcurrency%1)===0) {
+    this.setConcurrency = function (tempConcurrency) {
+        if (typeof tempConcurrency === 'number' && (tempConcurrency % 1) === 0) {
             concurrency = tempConcurrency;
             self.emit('concurrency-change', concurrency);
         } else {
@@ -119,19 +129,19 @@ function Queue() {
      * Add a message to the queue.
      * @param message data to be passed to the worker.
      */
-    this.add = function(message) {
+    this.add = function (message) {
         queue.push({
             message: message,
             id: nextIncrement()
         });
-        setTimeout(run(),0);
+        setTimeout(run(), 0);
     }
 
     /**
      * Pause the processing of the queue.  Will not call any new workers, but will allow existing workers to complete.
      */
-    this.pause = function() {
-        if(paused === false) {
+    this.pause = function () {
+        if (paused === false) {
             paused = true;
             clearInterval(restartInterval);
             self.emit('pause');
@@ -141,7 +151,7 @@ function Queue() {
     /**
      * Resume processing of the queue.
      */
-    this.resume = function() {
+    this.resume = function () {
         if (paused === true) {
             paused = false;
             self.emit('resume');
@@ -153,7 +163,7 @@ function Queue() {
     /**
      * Empty the queue.
      */
-    this.clear = function() {
+    this.clear = function () {
         this.emit('clearing');
         queue.length = 0;
         this.emit('cleared');
@@ -163,8 +173,8 @@ function Queue() {
      * Sets the number of tasks to group and send to a worker.  Default is 1.
      * @param num Number of tasks to send to a single worker.
      */
-    this.setGroupingNum = function(num) {
-        if(typeof num === 'number' && (num%1)===0) {
+    this.setGroupingNum = function (num) {
+        if (typeof num === 'number' && (num % 1) === 0) {
             grouping = num;
             self.emit('grouping-num-change', grouping);
         } else {
@@ -176,8 +186,8 @@ function Queue() {
      * Turns on or off grouping.  When enabled workers receive an array of tasks, rather than a single task.
      * @param bool TRUE: Turn on Grouping.  FALSE: Disable grouping.
      */
-    this.setGroupingIsEnabled = function(bool) {
-        if(typeof bool === 'boolean') {
+    this.setGroupingIsEnabled = function (bool) {
+        if (typeof bool === 'boolean') {
             groupingEnabled = bool;
             self.emit('grouping-enabled-change', groupingEnabled);
         } else {
@@ -188,7 +198,7 @@ function Queue() {
     /**
      * Switches queue state to flushing mode.  All remaining tasks will be sent to workers regardless of group size.
      */
-    this.flush = function() {
+    this.flush = function () {
         flushing = true;
     }
 
@@ -196,11 +206,13 @@ function Queue() {
      * Sends some stats about the queue to the callback method provided.  function(stats){}
      * @param callback
      */
-    this.getQueueStats = function(callback) {
-        setTimeout(function(){callback({
-            inProgress: progress.size,
-            inQueue: queue.length
-        })});
+    this.getQueueStats = function (callback) {
+        setTimeout(function () {
+            callback({
+                inProgress: progress.size,
+                inQueue: queue.length
+            })
+        });
     }
 }
 
