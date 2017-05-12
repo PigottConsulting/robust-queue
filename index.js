@@ -134,7 +134,7 @@ function Queue() {
             message: message,
             id: nextIncrement()
         });
-        setTimeout(run(), 0);
+        setTimeout(run, 0);
     }
 
     /**
@@ -155,7 +155,7 @@ function Queue() {
         if (paused === true) {
             paused = false;
             self.emit('resume');
-            setTimeout(run(), 0);
+            setTimeout(run, 0);
             restartInterval = setInterval(run, 100);
         }
     }
